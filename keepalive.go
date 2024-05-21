@@ -67,7 +67,6 @@ func (cli *Client) sendKeepAlive(ctx context.Context) (isSuccess, shouldContinue
 		Namespace: "w:p",
 		Type:      iqGet,
 		To:        types.ServerJID,
-		Content:   []waBinary.Node{{Tag: "ping"}},
 	})
 	if err != nil {
 		cli.Log.Warnf("Failed to send keepalive: %v", err)

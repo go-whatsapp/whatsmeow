@@ -102,7 +102,7 @@ func (cli *Client) handleDeviceNotification(node *waBinary.Node) {
 		cli.Log.Debugf("No device list cached for %s, ignoring device list notification", from)
 		return
 	}
-	cachedParticipantHash := participantListHashV2(cached)
+	cachedParticipantHash := participantListHashV2(cached.devices)
 	for _, child := range node.GetChildren() {
 		if child.Tag != "add" && child.Tag != "remove" {
 			cli.Log.Debugf("Unknown device list change tag %s", child.Tag)
@@ -114,17 +114,17 @@ func (cli *Client) handleDeviceNotification(node *waBinary.Node) {
 		changedDeviceJID := deviceChild.AttrGetter().JID("jid")
 		switch child.Tag {
 		case "add":
-			cached = append(cached, changedDeviceJID)
+			cached.devices = append(cached.devices, changedDeviceJID)
 		case "remove":
-			for i, jid := range cached {
+			for i, jid := range cached.devices {
 				if jid == changedDeviceJID {
-					cached = append(cached[:i], cached[i+1:]...)
+					cached.devices = append(cached.devices[:i], cached.devices[i+1:]...)
 				}
 			}
 		case "update":
 			// ???
 		}
-		newParticipantHash := participantListHashV2(cached)
+		newParticipantHash := participantListHashV2(cached.devices)
 		if newParticipantHash == deviceHash {
 			cli.Log.Debugf("%s's device list hash changed from %s to %s (%s). New hash matches", from, cachedParticipantHash, deviceHash, child.Tag)
 			cli.userDevicesCache.Store(from, cached)
@@ -133,6 +133,14 @@ func (cli *Client) handleDeviceNotification(node *waBinary.Node) {
 			cli.userDevicesCache.Delete(from)
 		}
 	}
+}
+
+func (cli *Client) handleFBDeviceNotification(node *waBinary.Node) {
+	cli.userDevicesCacheLock.Lock()
+	defer cli.userDevicesCacheLock.Unlock()
+	jid := node.AttrGetter().JID("from")
+	userDevices := parseFBDeviceList(jid, node.GetChildByTag("devices"))
+	cli.userDevicesCache[jid] = userDevices
 }
 
 func (cli *Client) handleOwnDevicesNotification(node *waBinary.Node) {
@@ -146,7 +154,7 @@ func (cli *Client) handleOwnDevicesNotification(node *waBinary.Node) {
 		cli.Log.Debugf("Ignoring own device change notification, device list not cached")
 		return
 	}
-	oldHash := participantListHashV2(cached)
+	oldHash := participantListHashV2(cached.devices)
 	expectedNewHash := node.AttrGetter().String("dhash")
 	var newDeviceList []types.JID
 	for _, child := range node.GetChildren() {
@@ -356,6 +364,8 @@ func (cli *Client) handleNotification(node *waBinary.Node) {
 		go cli.handleAccountSyncNotification(node)
 	case "devices":
 		go cli.handleDeviceNotification(node)
+	case "fbid:devices":
+		go cli.handleFBDeviceNotification(node)
 	case "w:gp2":
 		evt, err := cli.parseGroupNotification(node)
 		if err != nil {

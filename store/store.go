@@ -15,6 +15,7 @@ import (
 	"github.com/go-whatsapp/whatsmeow/types"
 	"github.com/go-whatsapp/whatsmeow/util/keys"
 	waLog "github.com/go-whatsapp/whatsmeow/util/log"
+	"github.com/google/uuid"
 )
 
 type IdentityStore interface {
@@ -138,6 +139,8 @@ type Device struct {
 	Platform     string
 	BusinessName string
 	PushName     string
+
+	FacebookUUID uuid.UUID
 
 	Initialized   bool
 	Identities    IdentityStore

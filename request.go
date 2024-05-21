@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"github.com/puzpuzpuz/xsync/v3"
@@ -20,7 +19,7 @@ import (
 )
 
 func (cli *Client) generateRequestID() string {
-	return cli.uniqueID + strconv.FormatUint(uint64(atomic.AddUint32(&cli.idCounter, 1)), 10)
+	return cli.uniqueID + strconv.FormatUint(cli.idCounter.Add(1), 10)
 }
 
 var xmlStreamEndNode = &waBinary.Node{Tag: "xmlstreamend"}
